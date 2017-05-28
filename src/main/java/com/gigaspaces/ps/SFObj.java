@@ -25,14 +25,8 @@ public class SFObj {
     private static final String DEFAULT_PROPERTIES_FILE = "salesforce-defaults.properties";
     private static String salesforceInstance = null;
     private static String salesforceServicesDataVersion = null;
-    private static String exactUsedVersion = null;
-  //  private static Project project = null;
 
-//    public SFObj(Project project) {
-//        this.project = project;
-//    }
-
-    private static Properties readProperties() {
+    public static Properties readProperties() {
         InputStream inputStream = null;
         String propertiesFile = null;
         //Try to load properties file from user.home/
