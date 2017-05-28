@@ -1,7 +1,7 @@
 package com.gigaspaces.ps;
 
 /**
- * Updated by yuval on 5/28/17.
+ * Updated by yuvald on 5/28/17.
  */
 public class Main {
     public static void main(String[] args) {
