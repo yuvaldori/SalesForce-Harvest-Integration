@@ -6,8 +6,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.*;
-import java.util.Properties;
-import java.util.StringTokenizer;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -18,15 +17,75 @@ public class HVObj {
 
     private static final Logger logger = Logger.getLogger("com.gigaspaces.ps.HVObj");
 
+    static Properties properties;
+
+    public static List<Project> getProjects(String dateFrom, String dateTo) throws HVException {
+
+        properties = SFObj.readProperties();
+
+        GetMethod get = new GetMethod("https://gigaspaces.harvestapp.com/projects");
+        get.addRequestHeader("Accept", "application/json");
+        get.addRequestHeader("Content-Type", "application/json");
+        get.addRequestHeader("Authorization", "Basic " + properties.getProperty("Authorization"));
+
+        //Project project = null;
+        HttpClient httpClient = new HttpClient();
+        List<Project> projectsList = null;
+
+        try {
+            httpClient.executeMethod(get);
+            String response = get.getResponseBodyAsString();
+
+            if (get.getStatusCode() != 200 && get.getStatusCode() != 201) {
+                System.out.println("ERROR: " + response);
+            } else {
+                // write Harvest projects to console
+                System.out.println("SUCCESS: " + response);
+
+                try {
+                    JSONArray jsonArray = new JSONArray(response);
+                    projectsList = new ArrayList<Project>();
+
+                    for (int i=0; i<jsonArray.length(); i++){
+                        JSONObject jsonProject = jsonArray.optJSONObject(i);
+                        JSONObject json = (JSONObject)jsonProject.get("project");
+                        Integer id = (Integer) json.get("id");
+
+                        Project project = getProject(id.toString(), dateFrom, dateTo);
+
+                        if (project == null){
+                            continue;
+                        }else {
+                            projectsList.add(project);
+                        }
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    String message = "Harvest failed building jsonObject";
+                    logger.log(Level.SEVERE, message, e);
+                    throw new HVException(message, e);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            String message = "Harvest getEntries projects has been failed";
+            logger.log(Level.SEVERE, message, e);
+            throw new HVException(message, e);
+        }
+
+        return projectsList;
+    }
+
 
     public static Project getProject(String id, String dateFrom, String dateTo) throws HVException {
 
-        Properties properties = SFObj.readProperties();
+        properties = SFObj.readProperties();
 
         GetMethod get = new GetMethod("https://gigaspaces.harvestapp.com/projects/" + id);
         get.addRequestHeader("Accept", "application/json");
         get.addRequestHeader("Content-Type", "application/json");
         get.addRequestHeader("Authorization", "Basic " + properties.getProperty("Authorization"));
+
         Project project = null;
         HttpClient httpClient = new HttpClient();
 
@@ -45,6 +104,10 @@ public class HVObj {
                     JSONObject jsonProject = new JSONObject(jsonObject.getString("project"));
                     String HVCode = jsonProject.getString("code");
                     String budget = jsonProject.getString("budget");
+
+                    if (HVCode.equals("null") || budget.equals("null")){
+                        return null;
+                    }
 
                     StringTokenizer st = new StringTokenizer(HVCode);
                     while (st.hasMoreElements()) {
@@ -79,7 +142,7 @@ public class HVObj {
         GetMethod get = new GetMethod("https://gigaspaces.harvestapp.com/tasks/" + taskId);
         get.addRequestHeader("Accept", "application/json");
         get.addRequestHeader("Content-Type", "application/json");
-        get.addRequestHeader("Authorization", "Basic eXV2YWxkQGdpZ2FzcGFjZXMuY29tOll1RDAyMDYy");
+        get.addRequestHeader("Authorization", "Basic " + properties.getProperty("Authorization"));
 
         HttpClient httpClient = new HttpClient();
 
@@ -128,7 +191,7 @@ public class HVObj {
         GetMethod get = new GetMethod("https://gigaspaces.harvestapp.com/projects/"+project.getId()+"/entries?from="+dateFrom+"&to="+dateTo);
         get.addRequestHeader("Accept", "application/json");
         get.addRequestHeader("Content-Type", "application/json");
-        get.addRequestHeader("Authorization", "Basic eXV2YWxkQGdpZ2FzcGFjZXMuY29tOll1RDAyMDYy");
+        get.addRequestHeader("Authorization", "Basic " + properties.getProperty("Authorization"));
 
         HttpClient httpClient = new HttpClient();
 
@@ -176,5 +239,41 @@ public class HVObj {
             logger.log(Level.SEVERE, message, e);
             throw new HVException(message, e);
         }
+    }
+
+    private static Map<String, Object> toMap(JSONObject object) throws JSONException {
+        Map<String, Object> map = new HashMap<String, Object>();
+
+        Iterator<String> keysItr = object.keys();
+        while(keysItr.hasNext()) {
+            String key = keysItr.next();
+            Object value = object.get(key);
+
+            if(value instanceof JSONArray) {
+                value = toList((JSONArray) value);
+            }
+
+            else if(value instanceof JSONObject) {
+                value = toMap((JSONObject) value);
+            }
+            map.put(key, value);
+        }
+        return map;
+    }
+
+    private static List<Object> toList(JSONArray array) throws JSONException {
+        List<Object> list = new ArrayList<Object>();
+        for(int i = 0; i < array.length(); i++) {
+            Object value = array.get(i);
+            if(value instanceof JSONArray) {
+                value = toList((JSONArray) value);
+            }
+
+            else if(value instanceof JSONObject) {
+                value = toMap((JSONObject) value);
+            }
+            list.add(value);
+        }
+        return list;
     }
 }

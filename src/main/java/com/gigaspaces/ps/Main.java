@@ -6,8 +6,9 @@ package com.gigaspaces.ps;
 public class Main {
     public static void main(String[] args) {
         try {
-            Project project = HVObj.getProject("13993362","20170501", "20170630");
-            SFObj.updateServiceOrder(project);
+            HVObj.getProjects("20160501", "20170630");
+            //Project project = HVObj.getProject("12831491","20160501", "20170630");
+            //SFObj.updateServiceOrder(project);
         }catch(HVException e){
             e.printStackTrace();
         }
