@@ -19,7 +19,8 @@ public class HVObj {
 
     static Properties properties;
 
-    public static List<Project> getProjects(String dateFrom, String dateTo) throws HVException {
+
+    public static void updateServiceOrder(String dateFrom, String dateTo) throws HVException {
 
         properties = SFObj.readProperties();
 
@@ -30,7 +31,6 @@ public class HVObj {
 
         //Project project = null;
         HttpClient httpClient = new HttpClient();
-        List<Project> projectsList = null;
 
         try {
             httpClient.executeMethod(get);
@@ -44,7 +44,6 @@ public class HVObj {
 
                 try {
                     JSONArray jsonArray = new JSONArray(response);
-                    projectsList = new ArrayList<Project>();
 
                     for (int i=0; i<jsonArray.length(); i++){
                         JSONObject jsonProject = jsonArray.optJSONObject(i);
@@ -52,12 +51,6 @@ public class HVObj {
                         Integer id = (Integer) json.get("id");
 
                         Project project = getProject(id.toString(), dateFrom, dateTo);
-
-                        if (project == null){
-                            continue;
-                        }else {
-                            projectsList.add(project);
-                        }
                     }
                 } catch (JSONException e) {
                     e.printStackTrace();
@@ -72,10 +65,7 @@ public class HVObj {
             logger.log(Level.SEVERE, message, e);
             throw new HVException(message, e);
         }
-
-        return projectsList;
     }
-
 
     public static Project getProject(String id, String dateFrom, String dateTo) throws HVException {
 
@@ -134,51 +124,11 @@ public class HVObj {
             throw new HVException(message, e);
         }
 
-        return project;
-    }
-
-    private static boolean getIsBillable(String taskId) throws HVException {
-        // Get the task details from Harvest
-        GetMethod get = new GetMethod("https://gigaspaces.harvestapp.com/tasks/" + taskId);
-        get.addRequestHeader("Accept", "application/json");
-        get.addRequestHeader("Content-Type", "application/json");
-        get.addRequestHeader("Authorization", "Basic " + properties.getProperty("Authorization"));
-
-        HttpClient httpClient = new HttpClient();
-
-        boolean isBillable = false;
-
-        try {
-            httpClient.executeMethod(get);
-            String response = get.getResponseBodyAsString();
-
-            if (get.getStatusCode() != 200 && get.getStatusCode() != 201) {
-                System.out.println("ERROR: " + response);
-            } else {
-                // write Harvest projects to console
-                System.out.println("SUCCESS: " + response);
-
-                try {
-                    JSONObject jsonObject = new JSONObject(response);
-                    JSONObject jsonTask = new JSONObject(jsonObject.getString("task"));
-                    String isBillableStr = jsonTask.getString("billable_by_default");
-                    isBillable = Boolean.valueOf(isBillableStr);
-
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                    String message = "Harvest failed building jsonObject";
-                    logger.log(Level.SEVERE, message, e);
-                    throw new HVException(message, e);
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-            String message = "Harvest getEntries projects has been failed";
-            logger.log(Level.SEVERE, message, e);
-            throw new HVException(message, e);
+        if (project != null) {
+            SFObj.updateServiceOrder(project);
         }
 
-        return isBillable;
+        return project;
     }
 
     public static void getHoures(Project project, String dateFrom, String dateTo) throws HVException {
@@ -194,6 +144,8 @@ public class HVObj {
         get.addRequestHeader("Authorization", "Basic " + properties.getProperty("Authorization"));
 
         HttpClient httpClient = new HttpClient();
+
+        Map<String, String> tasksCategory = buildBillableNonBuillsbleTasksMap(project);
 
         try{
             httpClient.executeMethod(get);
@@ -215,7 +167,7 @@ public class HVObj {
                         String hoursStr = dayEntryJson.getString("hours");
                         String taskId = dayEntryJson.getString("task_id");
 
-                        if (getIsBillable(taskId) == true){
+                        if (tasksCategory.get(taskId).equals("true")){
                             project.addBillableHours(new Float(hoursStr));
                         }else{
                             project.addNonBillableHours(new Float(hoursStr));
@@ -239,6 +191,55 @@ public class HVObj {
             logger.log(Level.SEVERE, message, e);
             throw new HVException(message, e);
         }
+    }
+
+    public static Map<String, String> buildBillableNonBuillsbleTasksMap(Project project) throws HVException {
+
+        GetMethod get = new GetMethod("https://gigaspaces.harvestapp.com/projects/"+ project.getId() + "/task_assignments");
+        get.addRequestHeader("Accept", "application/json");
+        get.addRequestHeader("Content-Type", "application/json");
+        get.addRequestHeader("Authorization", "Basic " + properties.getProperty("Authorization"));
+
+        HttpClient httpClient = new HttpClient();
+
+        Map<String, String> tasksCategory = new Hashtable<String, String>();
+
+        try{
+            httpClient.executeMethod(get);
+            String response = get.getResponseBodyAsString();
+
+            if (get.getStatusCode() != 200 && get.getStatusCode() != 201) {
+                System.out.println("ERROR: " + response);
+            }else{
+                // write Harvest projects to console
+                System.out.println("SUCCESS: " + response);
+
+                // calculate the billable hours
+                try {
+                    JSONArray jsonArray = new JSONArray(response);
+
+                    for (int index=0; index<jsonArray.length(); index++) {
+                        JSONObject jsonObject = jsonArray.getJSONObject(index);
+                        JSONObject taskAssignment = new JSONObject(jsonObject.getString("task_assignment"));
+                        String taskId = taskAssignment.getString("task_id");
+                        String isBillable = taskAssignment.getString("billable");
+                        tasksCategory.put(taskId, isBillable);
+                    }
+                }catch (JSONException e){
+                    e.printStackTrace();
+                    String message = "Harvest failed building jsonObject";
+                    logger.log(Level.SEVERE, message, e);
+                    throw new HVException(message, e);
+                }
+            }
+        }catch(IOException e){
+            e.printStackTrace();
+            String message = "Harvest getEntries projects has been failed";
+            logger.log(Level.SEVERE, message, e);
+            throw new HVException(message, e);
+        }
+
+        return tasksCategory;
     }
 
     private static Map<String, Object> toMap(JSONObject object) throws JSONException {

@@ -201,7 +201,7 @@ public class SFObj {
         }
     }
 
-    public static PostMethod updateServiceOrder(String url, JSONObject jsonProject, String accessToken) throws IOException {
+    private static PostMethod updateServiceOrder(String url, JSONObject jsonProject, String accessToken) throws IOException {
         PostMethod patch = new PostMethod(url)
         {
             @Override public String getName() { return "PATCH"; }
@@ -248,11 +248,11 @@ public class SFObj {
 
         } catch (JSONException e) {
             e.printStackTrace();
-            String message = "Salesforce failed building Service Order JSON";
+            String message = "Salesforce failed building Service Order JSON. " + project.toString() ;
             logger.log(Level.SEVERE, message, e);
         } catch (SFException e) {
             e.printStackTrace();
-            String message = "Salesforce Error";
+            String message = "Salesforce Error. " + project.toString();
             logger.log(Level.SEVERE, message, e);
         }
 
@@ -267,7 +267,7 @@ public class SFObj {
 
             try {
                 if (patch.getStatusCode() != 204) {
-                    System.out.println("ERROR: " + patch.getStatusLine());
+                    System.out.println("ERROR: " + patch.getStatusLine() + " " + project.toString());
 
                     return false;
                 } else {
@@ -281,7 +281,7 @@ public class SFObj {
             return true;
         } catch (IOException e) {
             e.printStackTrace();
-            String message = "Salesforce Error";
+            String message = "Salesforce Error. " + project.toString();
             logger.log(Level.SEVERE, message, e);
         }
 
