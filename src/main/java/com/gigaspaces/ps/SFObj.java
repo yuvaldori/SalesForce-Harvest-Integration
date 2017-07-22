@@ -19,6 +19,7 @@ import java.util.logging.Logger;
  * Created by yuval on 5/21/17.
  */
 public class SFObj {
+    private final static Logger LOGGER = Logger.getLogger(SFObj.class.getName());
 
     private static final Logger logger = Logger.getLogger("com.gigaspaces.ps.SFObj");
     private static final String PROPERTIES_FILE = System.getProperty("propertiesFile", System.getProperty("user.home") + "/salesforce.properties");
@@ -128,6 +129,7 @@ public class SFObj {
             if (get.getStatusCode() == HttpStatus.SC_OK) {
                 try {
                     System.out.println(get.getResponseBodyAsStream());
+                    LOGGER.info(get.getResponseBodyAsString());
                     response = new JSONObject(new JSONTokener(new InputStreamReader(get.getResponseBodyAsStream())));
                     String message = "Response for " + url + " is " + response.toString(2);
                     logger.log(Level.INFO, message);
@@ -225,6 +227,19 @@ public class SFObj {
         return post;
     }
 
+    private static StringBuffer printMap(Map<String, String> mapToPrint) {
+        StringBuffer sb = new StringBuffer();
+        SortedSet<String> keys = new TreeSet<String>(Collections.reverseOrder());
+        keys.addAll(mapToPrint.keySet());
+
+        for (String key : keys) {
+            String value = mapToPrint.get(key);
+            sb.append(key + "  -  " + value + "\n");
+        }
+
+        return sb;
+    }
+
     public static Boolean updateServiceOrder(Project project) {
         String accessToken = null;
         JSONObject jsonProject = new JSONObject();
@@ -236,9 +251,11 @@ public class SFObj {
 
             // Build the JSON record
             jsonProject.put("Budget__c", project.getBudget());
-            jsonProject.put("Billable_Hours__c", project.getBillableHours());
+            jsonProject.put("Total_Billable_Hours__c", project.getTotalBillableHours());
+            jsonProject.put("Billable_Hours_this_month__c", project.getBillableHoursThisMonth());
             jsonProject.put("Non_Billable_Hours__c", project.getNonBillableHours());
             jsonProject.put("Budget_Remaining__c", project.getBudgetRemaining());
+            jsonProject.put("Last_Report_Date__c", printMap(project.getTeamsMembersMap()));
 
             JSONObject responseAccount = salesforceSendGetRequest(salesforceInstance + salesforceServicesDataVersion + "query?q=SELECT+Account__c+from+Service_Order__c+where+Name=+'" + project.getName() + "'", accessToken);
             JSONObject responseId = salesforceSendGetRequest(salesforceInstance + salesforceServicesDataVersion + "query?q=SELECT+Record_ID__c+from+Service_Order__c+where+Name=+'" + project.getName() + "'", accessToken);
@@ -268,12 +285,14 @@ public class SFObj {
             try {
                 if (patch.getStatusCode() != 204) {
                     System.out.println("ERROR: " + patch.getStatusLine() + " " + project.toString());
+                    LOGGER.severe("ERROR: " + patch.getStatusLine() + " " + project.toString());
 
                     return false;
                 } else {
-                    System.out.println("SUCCESS: " + patch.getStatusLine());
                     System.out.println("Service Order " + serviceOrderId + " has been updated");
+                    LOGGER.info("Service Order " + serviceOrderId + " has been updated");
                     System.out.println("Link :" + salesforceInstance + "/" + serviceOrderId);
+                    LOGGER.info("Link :" + salesforceInstance + "/" + serviceOrderId);
                 }
             } finally {
                 patch.releaseConnection();

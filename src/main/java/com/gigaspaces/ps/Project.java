@@ -1,5 +1,8 @@
 package com.gigaspaces.ps;
 
+import java.util.Hashtable;
+import java.util.Map;
+
 /**
  * Created by yuval on 5/22/17.
  */
@@ -8,9 +11,12 @@ public class Project {
     private int id; // HV: equals to id field
     private String name; // SF: equals to Service Order Number field in Service Order object. HV: part of code field
     private float budget; // HV: equals to project budget field
-    private float billableHours; // HV: equals to project Billable Hours field
+    private float billableHoursThisMonth;
+    private float totalBillableHours; // HV: equals to project Billable Hours field
     private float nonBillableHours; // HV: equals to project Non-Billable Hours field
     private float budgetRemaining; // HV: equals to project budget Remaining field
+
+    private Map<String, String> teamsMembersMap;
 
     public Project(int id, String name, float budget) {
         this.id = id;
@@ -50,12 +56,16 @@ public class Project {
         this.budget = budget;
     }
 
-    public float getBillableHours() {
-        return billableHours;
+    public float getTotalBillableHours() {
+        return totalBillableHours;
     }
 
     public void addBillableHours(float billableHours) {
-        this.billableHours +=billableHours;
+        this.totalBillableHours +=billableHours;
+    }
+
+    public void addMonthlyBillableHours(float billableHours) {
+        this.billableHoursThisMonth +=billableHours;
     }
 
     public float getBudgetRemaining() {
@@ -65,13 +75,28 @@ public class Project {
     public void setBudgetRemaining(float budgetRemaining) {
         this.budgetRemaining = budgetRemaining;
     }
+    public float getBillableHoursThisMonth() {return billableHoursThisMonth; }
+
+    public void setBillableHoursThisMonth(float billableHoursThisMonth) {
+        this.billableHoursThisMonth = billableHoursThisMonth;
+    }
+
+    public Map<String, String> getTeamsMembersMap() {
+        return teamsMembersMap;
+    }
+
+    public void setTeamsMembersMap(Map<String, String> teamsMembersMap) {
+        this.teamsMembersMap = teamsMembersMap;
+    }
 
     public String toString(){
         return "id = " + id + "\n" +
                 "name = " + name + "\n" +
                 "budget = " + budget + "\n" +
-                "billableHours = " + billableHours + "\n" +
+                "totalBillableHours = " + totalBillableHours + "\n" +
+                "billableHoursThisMonth = " + billableHoursThisMonth + "\n" +
                 "nonBillableHours = " + nonBillableHours + "\n" +
-                "budgetRemaining = " + budgetRemaining + "\n";
+                "budgetRemaining = " + budgetRemaining + "\n" +
+                "TeamMembersReport = " + teamsMembersMap;
     }
 }
