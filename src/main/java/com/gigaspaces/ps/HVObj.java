@@ -61,7 +61,9 @@ public class HVObj {
                         JSONObject json = (JSONObject) jsonProject.get("project");
                         Integer id = (Integer) json.get("id");
                         Project project = getProject(id.toString(), dateFrom);
-                        projectsList.add(project);
+                        if (project != null) {
+                            projectsList.add(project);
+                        }
                     }
                     System.out.println("Finished reading from HV");
 
@@ -105,8 +107,9 @@ public class HVObj {
                     JSONObject jsonProject = new JSONObject(jsonObject.getString("project"));
                     String HVCode = jsonProject.getString("code");
                     String budget = jsonProject.getString("budget");
+                    String isActive = jsonProject.getString("active");
 
-                    if (HVCode.equals("null") || budget.equals("null")) {
+                    if (HVCode.equals("null") || budget.equals("null") || isActive.equals("false")) {
                         return null;
                     }
 
